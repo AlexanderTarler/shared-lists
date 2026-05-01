@@ -1,0 +1,16 @@
+{
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "printWidth": 100
+}
+
+But we need to output only the code, no explanation. So output exactly that.```json
+{
+  "semi": true,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "printWidth": 100
+}
