@@ -1,12 +1,16 @@
 FROM node:20-slim
-
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Install ngrok binary (required by expo --tunnel)
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/* \
+    && curl -sSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar xz -C /usr/local/bin
+
 COPY . .
 
 EXPOSE 8081
 
-CMD ["npx", "expo", "start", "--tunnel", "--host", "0.0.0.0", "--non-interactive"]
+# Start Expo with tunnel mode (injects ngrok token from Fly secret)
+CMD sh -c "ngrok config add-authtoken $NGROK_AUTHTOKEN 2>/dev/null || true && npx expo start --tunnel --host 0.0.0.0 --non-interactive"
