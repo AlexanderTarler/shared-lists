@@ -1,4 +1,4 @@
-app = "shared-list"
+app = "shared-lists"
 primary_region = "arn"
 
 [build]
