@@ -1,0 +1,24 @@
+app = "shared-list-app"
+primary_region = "lax"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8081
+
+  [[services.ports]]
+    port = 8081
+    handlers = ["tls", "http"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+[env]
+  # These will be set via fly secrets (see below)
+  # EXPO_PUBLIC_SUPABASE_URL = ""
+  # EXPO_PUBLIC_SUPABASE_ANON_KEY = ""
+  # NGROK_AUTHTOKEN = ""
