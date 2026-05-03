@@ -1,7 +1,7 @@
-<<<<<<< HEAD
-app = "shared-list-app"
+
 primary_region = "lax"
 
+primary_region = "arn"
 [build]
   dockerfile = "Dockerfile"
 
@@ -15,36 +15,45 @@ primary_region = "lax"
 
 [[vm]]
   cpu_kind = "shared"
+  memory = "1gb"
   cpus = 1
   memory_mb = 512
 
-[env]
-  # These will be set via fly secrets (see below)
-  # EXPO_PUBLIC_SUPABASE_URL = ""
-  # EXPO_PUBLIC_SUPABASE_ANON_KEY = ""
-  # NGROK_AUTHTOKEN = ""
-=======
-# fly.toml app configuration file generated for shared-lists on 2026-05-03T10:42:50Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
 
-app = 'shared-lists'
-primary_region = 'arn'
 
-[build]
 
-[http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ['app']
 
-[[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
-  memory_mb = 256
->>>>>>> f09db073feb7d14f0abdaec7e2a84f8d27d8c9ab
+
+
+
+
+
+
+
+
+
+
+
+
+But ensure formatting matches. The instruction says "Output ONLY code." So I'll output that exactly.app = "shared-list-app"
+primary_region = "arn"
+
+  dockerfile = "Dockerfile"
+[[services]]
+
+
+
+
+
+
+
+
+  protocol = "tcp"
+  internal_port = 8081
+
+  [[services.ports]]
+    port = 8081
+    handlers = ["tls", "http"]
+  memory = "1gb"
+  cpu_kind = "shared"
+
