@@ -1,7 +1,6 @@
-
-primary_region = "lax"
-
+app = "shared-list-app"
 primary_region = "arn"
+
 [build]
   dockerfile = "Dockerfile"
 
@@ -14,46 +13,6 @@ primary_region = "arn"
     handlers = ["tls", "http"]
 
 [[vm]]
-  cpu_kind = "shared"
   memory = "1gb"
+  cpu_kind = "shared"
   cpus = 1
-  memory_mb = 512
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-But ensure formatting matches. The instruction says "Output ONLY code." So I'll output that exactly.app = "shared-list-app"
-primary_region = "arn"
-
-  dockerfile = "Dockerfile"
-[[services]]
-
-
-
-
-
-
-
-
-  protocol = "tcp"
-  internal_port = 8081
-
-  [[services.ports]]
-    port = 8081
-    handlers = ["tls", "http"]
-  memory = "1gb"
-  cpu_kind = "shared"
-
