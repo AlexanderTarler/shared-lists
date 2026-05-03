@@ -13,4 +13,4 @@ COPY . .
 EXPOSE 8081
 
 # Start Expo with tunnel mode (injects ngrok token from Fly secret)
-CMD sh -c "ngrok config add-authtoken $NGROK_AUTHTOKEN 2>/dev/null || true && npx expo start --tunnel --host 0.0.0.0 --non-interactive"
+CMD sh -c "ngrok config add-authtoken $NGROK_AUTHTOKEN 2>/dev/null || true && CI=1 npx expo start --tunnel"
