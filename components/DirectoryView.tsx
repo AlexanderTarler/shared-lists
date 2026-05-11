@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
-  Alert,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Folder, List } from '../types';
@@ -18,17 +17,17 @@ type Props = {
   sessionEmail: string;
   currentFolder: Folder | null;
   folders: Folder[];
-  myLists: List[];
+  lists: List[];
   unreadLists: Set<string>;
   loading: boolean;
   error: string | null;
+  isOffline: boolean;
   getBackLabel: () => string;
   goUpOneFolder: () => void;
   goIntoFolder: (folder: Folder) => void;
   openList: (list: List) => void;
   onShowFolderModal: () => void;
   onShowListModal: () => void;
-  onShowJoinModal: () => void;
   onSetFolderComment: (folderId: string, comment: string) => void;
   onSetListComment: (listId: string, comment: string) => void;
 };
@@ -37,17 +36,17 @@ export default function DirectoryView({
   sessionEmail,
   currentFolder,
   folders,
-  myLists,
+  lists,
   unreadLists,
   loading,
   error,
+  isOffline,
   getBackLabel,
   goUpOneFolder,
   goIntoFolder,
   openList,
   onShowFolderModal,
   onShowListModal,
-  onShowJoinModal,
   onSetFolderComment,
   onSetListComment,
 }: Props) {
@@ -59,23 +58,6 @@ export default function DirectoryView({
     | { type: 'list'; item: List };
   const [commentTarget, setCommentTarget] = useState<CommentTarget | null>(null);
   const [commentMode, setCommentMode] = useState<'edit' | 'view'>('edit');
-
-  // Long-press timer
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function startLongPress(type: 'folder' | 'list', item: Folder | List) {
-    longPressTimer.current = setTimeout(() => {
-      setCommentMode('edit');
-      setCommentTarget({ type, item } as CommentTarget);
-    }, 1000);
-  }
-
-  function cancelLongPress() {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }
 
   function handleCommentTap(type: 'folder' | 'list', item: Folder | List) {
     setCommentMode('view');
@@ -120,6 +102,13 @@ export default function DirectoryView({
         </TouchableOpacity>
       </View>
 
+      {/* Offline Banner */}
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineBannerText}>📡 Offline — showing cached data</Text>
+        </View>
+      )}
+
       {/* Burger Menu */}
       {isMenuOpen && (
         <>
@@ -156,7 +145,7 @@ export default function DirectoryView({
             <Text style={styles.errorText}>{error}</Text>
             <Text style={styles.errorSub}>Navigate back or pull to retry</Text>
           </View>
-        ) : folders.length === 0 && myLists.length === 0 ? (
+        ) : folders.length === 0 && lists.length === 0 ? (
           <View style={styles.center}>
             <Text style={styles.emptyEmoji}>📂</Text>
             <Text style={styles.emptyTitle}>This folder is empty</Text>
@@ -176,9 +165,7 @@ export default function DirectoryView({
                   setCommentMode('edit');
                   setCommentTarget({ type: 'folder', item: folder });
                 }}
-                onPressIn={() => startLongPress('folder', folder)}
-                onPressOut={cancelLongPress}
-                delayLongPress={800}
+                delayLongPress={2000}
               >
                 <View style={styles.cardIcon}>
                   <Text style={styles.cardEmoji}>📂</Text>
@@ -202,7 +189,7 @@ export default function DirectoryView({
             ))}
 
             {/* Lists */}
-            {myLists.map((list) => (
+            {lists.map((list) => (
               <Pressable
                 key={`list-${list.id}`}
                 style={styles.card}
@@ -211,9 +198,7 @@ export default function DirectoryView({
                   setCommentMode('edit');
                   setCommentTarget({ type: 'list', item: list });
                 }}
-                onPressIn={() => startLongPress('list', list)}
-                onPressOut={cancelLongPress}
-                delayLongPress={800}
+                delayLongPress={2000}
               >
                 <View style={styles.cardIcon}>
                   <Text style={styles.cardEmoji}>📝</Text>
@@ -262,9 +247,11 @@ export default function DirectoryView({
             <Text style={styles.actionBtnText}>List</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.joinBtn} onPress={onShowJoinModal}>
-          <Text style={styles.joinBtnText}>Join Existing List</Text>
-        </TouchableOpacity>
+        <View style={styles.autoShareNotice}>
+          <Text style={styles.autoShareNoticeText}>
+            Lists and folders are shared automatically with your partner.
+          </Text>
+        </View>
       </View>
 
       {/* Comment Popover */}
@@ -283,7 +270,7 @@ export default function DirectoryView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F4F8',
+    backgroundColor: '#FEF9F3',
   },
 
   // ── Top Nav ──
@@ -295,26 +282,29 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? 44 : 12,
     paddingBottom: 12,
     zIndex: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E8DCC8',
   },
   headerArea: {
     flex: 1,
     paddingRight: 10,
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
+    color: '#5C4033',
     letterSpacing: -0.5,
+    fontFamily: 'Georgia',
   },
   subtitle: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: '#A39B87',
     marginTop: 2,
     fontWeight: '500',
   },
   backHint: {
     fontSize: 14,
-    color: '#6366F1',
+    color: '#8B7355',
     fontWeight: '600',
     marginTop: 4,
   },
@@ -322,17 +312,34 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF8F0',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 101,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowColor: '#8B7355',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E8DCC8',
   },
-  menuIcon: { fontSize: 22, color: '#4B5563' },
+  menuIcon: { fontSize: 22, color: '#8B7355' },
+
+  // ── Offline Banner ──
+  offlineBanner: {
+    backgroundColor: '#FFF3CD',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8DCC8',
+  },
+  offlineBannerText: {
+    color: '#856404',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 
   // ── Menu ──
   menuOverlay: {
@@ -342,81 +349,89 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 99,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(92, 64, 51, 0.15)',
   },
   menuBox: {
     position: 'absolute',
     top: Platform.OS === 'android' ? 52 : 20,
     right: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFBF7',
     padding: 18,
     borderRadius: 16,
     zIndex: 100,
-    shadowColor: '#000',
+    shadowColor: '#8B7355',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 8,
     minWidth: 200,
+    borderWidth: 1,
+    borderColor: '#E8DCC8',
   },
   menuEmail: {
-    color: '#6B7280',
+    color: '#8B7355',
     marginBottom: 14,
     fontSize: 13,
     fontWeight: '500',
   },
   signOutBtn: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FDDCC4',
     paddingVertical: 10,
     borderRadius: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DBAE86',
   },
-  signOutText: { color: '#EF4444', fontWeight: '700', fontSize: 14 },
+  signOutText: { color: '#C45C3C', fontWeight: '700', fontSize: 14 },
 
   // ── Scroll Area ──
   scrollArea: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 6 },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 12 },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: 80,
   },
-  loadingText: { color: '#9CA3AF', fontSize: 15, marginTop: 12 },
+  loadingText: { color: '#A39B87', fontSize: 15, marginTop: 12 },
   errorIcon: { fontSize: 48, marginBottom: 12 },
-  errorText: { color: '#EF4444', fontSize: 16, fontWeight: '600', textAlign: 'center', paddingHorizontal: 20 },
-  errorSub: { color: '#9CA3AF', fontSize: 13, marginTop: 6 },
+  errorText: { color: '#C45C3C', fontSize: 16, fontWeight: '600', textAlign: 'center', paddingHorizontal: 20 },
+  errorSub: { color: '#A39B87', fontSize: 13, marginTop: 6 },
   emptyEmoji: { fontSize: 56, marginBottom: 14 },
-  emptyTitle: { fontSize: 19, fontWeight: '700', color: '#374151' },
-  emptySub: { fontSize: 14, color: '#9CA3AF', marginTop: 6, textAlign: 'center', paddingHorizontal: 30 },
+  emptyTitle: { fontSize: 19, fontWeight: '700', color: '#5C4033' },
+  emptySub: { fontSize: 14, color: '#A39B87', marginTop: 6, textAlign: 'center', paddingHorizontal: 30 },
 
   // ── Cards ──
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFBF7',
     paddingVertical: 14,
     paddingHorizontal: 14,
-    borderRadius: 16,
+    borderRadius: 12,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowColor: '#8B7355',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 1,
+    borderLeftWidth: 4,
+    borderLeftColor: '#D4A574',
   },
   cardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#FFF0E6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E8DCC8',
   },
   cardEmoji: { fontSize: 20 },
   cardContent: { flex: 1, paddingRight: 8 },
-  cardName: { fontSize: 17, fontWeight: '600', color: '#1F2937' },
+  cardName: { fontSize: 16, fontWeight: '600', color: '#5C4033', fontFamily: 'Georgia' },
   cardRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -433,7 +448,7 @@ const styles = StyleSheet.create({
   commentIndicatorText: { fontSize: 15 },
   chevron: {
     fontSize: 22,
-    color: '#D1D5DB',
+    color: '#C9B39F',
     fontWeight: '300',
     marginLeft: 4,
   },
@@ -441,9 +456,9 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#EF4444',
+    backgroundColor: '#D4A574',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: '#FFFBF7',
   },
 
   // ── Bottom Actions ──
@@ -451,9 +466,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     paddingBottom: Platform.OS === 'ios' ? 28 : 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderTopWidth: 2,
+    borderTopColor: '#E8DCC8',
+    backgroundColor: '#FEF9F3',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -466,25 +481,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 12,
     gap: 8,
+    borderWidth: 2,
   },
-  folderBtn: { backgroundColor: '#EEF2FF' },
-  listBtn: { backgroundColor: '#6366F1' },
+  folderBtn: { 
+    backgroundColor: '#FFF8F0',
+    borderColor: '#D4A574',
+  },
+  listBtn: { 
+    backgroundColor: '#D4A574',
+    borderColor: '#B8905A',
+  },
   actionBtnIcon: { fontSize: 18 },
   actionBtnText: {
     fontSize: 15,
     fontWeight: '700',
+    color: '#5C4033',
   },
-  joinBtn: {
-    backgroundColor: '#F3F4F6',
+  autoShareNotice: {
+    backgroundColor: '#FFF8F0',
     paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: 14,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E8DCC8',
   },
-  joinBtnText: {
-    color: '#4B5563',
-    fontSize: 15,
-    fontWeight: '600',
+  autoShareNoticeText: {
+    color: '#8B7355',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

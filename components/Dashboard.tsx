@@ -7,13 +7,11 @@ import { List } from '../types';
 import DirectoryView from './DirectoryView';
 import ActiveListView from './ActiveListView';
 import CreateModal from './CreateModal';
-import JoinModal from './JoinModal';
 
 export default function Dashboard({ session }: { session: Session }) {
   const [activeList, setActiveList] = useState<List | null>(null);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [showListModal, setShowListModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false);
   
   const directory = useDirectory(session.user.id);
   const items = useRealtimeItems(activeList ? activeList.id : null);
@@ -56,6 +54,7 @@ export default function Dashboard({ session }: { session: Session }) {
           items={items.items}
           loading={items.loading}
           error={items.error}
+          isOffline={items.isOffline}
           currentFolderName={directory.currentFolder?.name ?? ''}
           selectionMode={items.selectionMode}
           selectedIds={items.selectedIds}
@@ -83,17 +82,17 @@ export default function Dashboard({ session }: { session: Session }) {
         sessionEmail={session.user.email ?? ''}
         currentFolder={directory.currentFolder}
         folders={directory.folders}
-        myLists={directory.myLists}
+        lists={directory.lists}
         unreadLists={items.unreadLists}
         loading={directory.loading}
         error={directory.error}
+        isOffline={directory.isOffline}
         getBackLabel={directory.getBackLabel}
         goUpOneFolder={directory.goUpOneFolder}
         goIntoFolder={directory.goIntoFolder}
         openList={openList}
         onShowFolderModal={() => setShowFolderModal(true)}
         onShowListModal={() => setShowListModal(true)}
-        onShowJoinModal={() => setShowJoinModal(true)}
         onSetFolderComment={directory.setFolderComment}
         onSetListComment={directory.setListComment}
       />
@@ -114,21 +113,10 @@ export default function Dashboard({ session }: { session: Session }) {
         onCancel={() => setShowListModal(false)}
         onCreate={handleCreateList}
       />
-
-      <JoinModal
-        visible={showJoinModal}
-        otherLists={directory.otherLists}
-        loading={directory.loading}
-        onJoin={async (listId) => {
-          const ok = await directory.joinList(listId);
-          if (ok) setShowJoinModal(false);
-        }}
-        onClose={() => setShowJoinModal(false)}
-      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F0F4F8' },
+  safeArea: { flex: 1, backgroundColor: '#FEF9F3' },
 });

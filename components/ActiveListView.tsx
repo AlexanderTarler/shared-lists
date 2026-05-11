@@ -20,6 +20,7 @@ type Props = {
   items: Item[];
   loading: boolean;
   error: string | null;
+  isOffline: boolean;
   currentFolderName: string;
   selectionMode: boolean;
   selectedIds: Set<string>;
@@ -43,6 +44,7 @@ export default function ActiveListView({
   items,
   loading,
   error,
+  isOffline,
   currentFolderName,
   selectionMode,
   selectedIds,
@@ -67,10 +69,6 @@ export default function ActiveListView({
   // Comment popover state
   const [commentTarget, setCommentTarget] = useState<Item | null>(null);
   const [commentMode, setCommentMode] = useState<'edit' | 'view'>('edit');
-
-  // Long-press timer
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [longPressActive, setLongPressActive] = useState<string | null>(null);
 
   function handleAddItem() {
     if (!newGroceryText.trim()) return;
@@ -100,24 +98,6 @@ export default function ActiveListView({
     if (!editNameText.trim()) return;
     onUpdateListName(editNameText.trim());
     setIsEditingName(false);
-  }
-
-  // Long-press handlers for items
-  function handleLongPressIn(item: Item) {
-    setLongPressActive(item.id);
-    longPressTimer.current = setTimeout(() => {
-      setLongPressActive(null);
-      setCommentMode('edit');
-      setCommentTarget(item);
-    }, 1000);
-  }
-
-  function handleLongPressOut() {
-    setLongPressActive(null);
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
   }
 
   function handleCommentTap(item: Item) {
@@ -163,6 +143,13 @@ export default function ActiveListView({
           )}
         </View>
       </View>
+
+      {/* Offline Banner */}
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineBannerText}>📡 Offline — showing cached data</Text>
+        </View>
+      )}
 
       {/* Header */}
       {isEditingName ? (
@@ -255,7 +242,6 @@ export default function ActiveListView({
         ) : (
           items.map((item) => {
             const isSelected = selectedIds.has(item.id);
-            const isLongPressing = longPressActive === item.id;
 
             return (
               <Pressable
@@ -264,7 +250,6 @@ export default function ActiveListView({
                   styles.itemCard,
                   item.is_completed && styles.itemCardDone,
                   isSelected && styles.itemCardSelected,
-                  isLongPressing && styles.itemCardLongPress,
                 ]}
                 onPress={() => {
                   if (selectionMode) {
@@ -279,9 +264,7 @@ export default function ActiveListView({
                     setCommentTarget(item);
                   }
                 }}
-                onPressIn={() => handleLongPressIn(item)}
-                onPressOut={handleLongPressOut}
-                delayLongPress={800}
+                delayLongPress={2000}
               >
                 {/* Selection checkbox (selection mode) or completion checkbox */}
                 {selectionMode ? (
@@ -405,7 +388,7 @@ export default function ActiveListView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F4F8',
+    backgroundColor: '#FEF9F3',
   },
 
   // ── Top Bar ──
@@ -416,6 +399,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'android' ? 44 : 12,
     paddingBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E8DCC8',
   },
   backBtn: {
     flexDirection: 'row',
@@ -424,32 +409,51 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingRight: 12,
   },
-  backIcon: { fontSize: 22, color: '#6366F1', fontWeight: '700' },
-  backLabel: { fontSize: 16, color: '#6366F1', fontWeight: '600' },
+  backIcon: { fontSize: 22, color: '#8B7355', fontWeight: '700' },
+  backLabel: { fontSize: 16, color: '#8B7355', fontWeight: '600' },
   topActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   clearBtn: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#FFF3E0',
+    backgroundColor: '#FFF0E6',
+    borderWidth: 1,
+    borderColor: '#E8DCC8',
   },
-  clearBtnText: { fontSize: 14, fontWeight: '600', color: '#F59E0B' },
+  clearBtnText: { fontSize: 14, fontWeight: '600', color: '#D4A574' },
   trashBtn: {
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FDDCC4',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#DBAE86',
   },
   trashIcon: { fontSize: 18 },
   cancelSelBtn: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E8DCC8',
   },
-  cancelSelText: { fontSize: 14, fontWeight: '600', color: '#4B5563' },
+  cancelSelText: { fontSize: 14, fontWeight: '600', color: '#5C4033' },
+
+  // ── Offline Banner ──
+  offlineBanner: {
+    backgroundColor: '#FFF3CD',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E8DCC8',
+  },
+  offlineBannerText: {
+    color: '#856404',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
 
   // ── List Header ──
   listHeaderRow: {
@@ -463,10 +467,11 @@ const styles = StyleSheet.create({
   listTitle: {
     fontSize: 30,
     fontWeight: '800',
-    color: '#111827',
+    color: '#5C4033',
     letterSpacing: -0.5,
+    fontFamily: 'Georgia',
   },
-  editHint: { fontSize: 20, color: '#CBD5E1' },
+  editHint: { fontSize: 20, color: '#C9B39F' },
 
   editHeaderRow: {
     flexDirection: 'row',
@@ -477,30 +482,34 @@ const styles = StyleSheet.create({
   },
   editInput: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF8F0',
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 10,
     fontSize: 18,
-    borderWidth: 1.5,
-    borderColor: '#6366F1',
-    color: '#1F2937',
+    borderWidth: 2,
+    borderColor: '#D4A574',
+    color: '#5C4033',
   },
   saveBtn: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#D4A574',
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#B8905A',
   },
   saveBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
   cancelEditBtn: {
     width: 42,
     height: 42,
     borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFF0E6',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E8DCC8',
   },
-  cancelEditText: { fontSize: 16, color: '#6B7280', fontWeight: '600' },
+  cancelEditText: { fontSize: 16, color: '#8B7355', fontWeight: '600' },
 
   // ── Add Row ──
   addRow: {
@@ -511,30 +520,34 @@ const styles = StyleSheet.create({
   },
   addInput: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF8F0',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 10,
     fontSize: 16,
-    color: '#1F2937',
-    shadowColor: '#000',
+    color: '#5C4033',
+    shadowColor: '#8B7355',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
+    borderWidth: 1,
+    borderColor: '#E8DCC8',
   },
   addBtn: {
     width: 52,
     height: 52,
-    borderRadius: 14,
-    backgroundColor: '#6366F1',
+    borderRadius: 10,
+    backgroundColor: '#D4A574',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6366F1',
+    shadowColor: '#8B7355',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 6,
+    borderWidth: 1,
+    borderColor: '#B8905A',
   },
   addBtnText: { color: '#FFFFFF', fontSize: 28, fontWeight: '400', marginTop: -1 },
 
@@ -545,13 +558,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#FFF0E6',
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 10,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E8DCC8',
   },
-  selectAllText: { fontSize: 14, fontWeight: '600', color: '#6366F1' },
-  selectedCount: { fontSize: 14, fontWeight: '600', color: '#4B5563' },
+  selectAllText: { fontSize: 14, fontWeight: '600', color: '#8B7355' },
+  selectedCount: { fontSize: 14, fontWeight: '600', color: '#A39B87' },
 
   // ── Scroll Area ──
   scrollArea: { flex: 1 },
@@ -562,66 +577,65 @@ const styles = StyleSheet.create({
   itemCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFFBF7',
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 10,
     marginBottom: 8,
-    shadowColor: '#000',
+    shadowColor: '#8B7355',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
+    borderLeftWidth: 3,
+    borderLeftColor: '#D4A574',
   },
-  itemCardDone: { backgroundColor: '#F9FAFB', opacity: 0.85 },
+  itemCardDone: { backgroundColor: '#F5F1ED', opacity: 0.8 },
   itemCardSelected: {
     borderWidth: 2,
-    borderColor: '#6366F1',
-    backgroundColor: '#EEF2FF',
-  },
-  itemCardLongPress: {
-    backgroundColor: '#F3F4F6',
-    transform: [{ scale: 0.98 }],
+    borderColor: '#D4A574',
+    backgroundColor: '#FFF0E6',
+    borderLeftWidth: 2,
   },
 
   checkbox: {
     width: 26,
     height: 26,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: '#C9B39F',
     marginRight: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF8F0',
   },
   checkboxDone: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
+    backgroundColor: '#A39B87',
+    borderColor: '#A39B87',
   },
   checkmark: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
 
   selectBox: {
     width: 26,
     height: 26,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: '#C9B39F',
     marginRight: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF8F0',
   },
   selectBoxActive: {
-    backgroundColor: '#6366F1',
-    borderColor: '#6366F1',
+    backgroundColor: '#D4A574',
+    borderColor: '#D4A574',
   },
   selectCheck: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 
   itemContent: { flex: 1, paddingRight: 8 },
-  itemTitle: { fontSize: 16, color: '#1F2937', fontWeight: '500', lineHeight: 22 },
+  itemTitle: { fontSize: 16, color: '#5C4033', fontWeight: '500', lineHeight: 22 },
   itemTitleDone: {
     textDecorationLine: 'line-through',
-    color: '#9CA3AF',
+    color: '#A39B87',
     fontWeight: '400',
   },
 
@@ -639,50 +653,54 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 8,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: '#FDDCC4',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 6,
+    borderWidth: 1,
+    borderColor: '#DBAE86',
   },
-  itemDeleteIcon: { fontSize: 18, color: '#EF4444', fontWeight: '700', marginTop: -1 },
+  itemDeleteIcon: { fontSize: 18, color: '#C45C3C', fontWeight: '700', marginTop: -1 },
 
   // ── Empty State ──
   emojiEmpty: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 18, fontWeight: '700', color: '#6B7280' },
-  emptySub: { fontSize: 14, color: '#9CA3AF', marginTop: 4 },
-  errorText: { color: '#EF4444', fontSize: 16, textAlign: 'center', paddingHorizontal: 20 },
+  emptyText: { fontSize: 18, fontWeight: '700', color: '#8B7355' },
+  emptySub: { fontSize: 14, color: '#A39B87', marginTop: 4 },
+  errorText: { color: '#C45C3C', fontSize: 16, textAlign: 'center', paddingHorizontal: 20 },
 
   // ── Delete List ──
   deleteListBtn: {
     marginTop: 24,
     paddingVertical: 14,
     alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FECACA',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#FDDCC4',
   },
-  deleteListText: { color: '#EF4444', fontSize: 15, fontWeight: '600' },
+  deleteListText: { color: '#C45C3C', fontSize: 15, fontWeight: '600' },
 
   // ── Bottom Selection Bar ──
   bottomBar: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingBottom: Platform.OS === 'ios' ? 30 : 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    borderTopWidth: 2,
+    borderTopColor: '#E8DCC8',
+    backgroundColor: '#FEF9F3',
   },
   deleteSelectedBtn: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#FDDCC4',
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DBAE86',
   },
   deleteSelectedBtnDisabled: {
-    backgroundColor: '#FECACA',
+    backgroundColor: '#F5E8DC',
   },
   deleteSelectedText: {
-    color: '#FFFFFF',
+    color: '#C45C3C',
     fontSize: 16,
     fontWeight: '700',
   },

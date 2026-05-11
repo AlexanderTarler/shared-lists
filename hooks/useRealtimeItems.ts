@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Item } from '../types';
+import { saveCachedItems, loadCachedItems } from '../lib/cache';
 
 export function useRealtimeItems(activeListId: string | null) {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
 
   // Selection mode for batch delete
   const [selectionMode, setSelectionMode] = useState(false);
@@ -24,16 +26,35 @@ export function useRealtimeItems(activeListId: string | null) {
   const fetchItems = useCallback(async (listId: string) => {
     setLoading(true);
     setError(null);
-    const { data, error: err } = await supabase
-      .from('items')
-      .select('*')
-      .eq('list_id', listId)
-      .order('created_at', { ascending: false });
+    setIsOffline(false);
+    try {
+      const { data, error: err } = await supabase
+        .from('items')
+        .select('*')
+        .eq('list_id', listId)
+        .order('created_at', { ascending: false });
 
-    if (err) {
-      setError(`Failed to load items: ${err.message}`);
-    } else if (data) {
-      setItems(data);
+      if (err) {
+        setError(`Failed to load items: ${err.message}`);
+      } else if (data) {
+        setItems(data);
+        // Cache items for offline use
+        await saveCachedItems(listId, data);
+      }
+    } catch (e: any) {
+      // Network error — try loading from cache
+      if (e?.message?.includes('Network') || e?.message?.includes('Failed to fetch')) {
+        setIsOffline(true);
+        const cached = await loadCachedItems(listId);
+        if (cached) {
+          setItems(cached);
+          setError(null);
+        } else {
+          setError('No internet connection and no cached items available.');
+        }
+      } else {
+        setError(`Unexpected error: ${e?.message || 'Unknown'}`);
+      }
     }
     setLoading(false);
   }, []);
@@ -206,6 +227,7 @@ export function useRealtimeItems(activeListId: string | null) {
     items,
     loading,
     error,
+    isOffline,
     unreadLists,
     selectionMode,
     selectedIds,

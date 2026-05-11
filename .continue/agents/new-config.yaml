@@ -1,0 +1,21 @@
+# This is an example configuration file
+# To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
+
+name: Example Config
+version: 1.0.0
+schema: v1
+
+# Define which models can be used
+# https://docs.continue.dev/customization/models
+models:
+  - name: DeepSeek V4 Pro
+    provider: deepseek
+    model: deepseek-v4-pro
+    apiKey: sk-84f8ce07cf554e0694a386486971b509
+    roles:
+      - chat
+      - edit
+# MCP Servers that Continue can access
+# https://docs.continue.dev/customization/mcp-tools
+mcpServers:
+  - uses: anthropic/memory-mcp

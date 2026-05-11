@@ -47,6 +47,16 @@ as $$
   select list_id from public.list_members where user_id = auth.uid();
 $$;
 
+-- Get user ID by email (for partner lookup in auto-sharing)
+create or replace function public.get_user_id_by_email(email_param text)
+returns uuid
+language sql
+security definer
+stable
+as $$
+  select id from auth.users where email = email_param limit 1;
+$$;
+
 -- ── Indexes ──────────────────────────────────────────────────
 
 create index if not exists idx_folders_parent on public.folders(parent_id);

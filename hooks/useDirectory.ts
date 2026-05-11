@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Folder, List } from '../types';
+import { PARTNER_EMAIL } from '../config';
+import { loadCachedDirectory, saveCachedDirectory } from '../lib/cache';
 
 export function useDirectory(userId: string) {
   // Navigation & Hierarchy State
@@ -10,16 +12,17 @@ export function useDirectory(userId: string) {
 
   // Data States
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [myLists, setMyLists] = useState<List[]>([]);
-  const [otherLists, setOtherLists] = useState<List[]>([]);
+  const [lists, setLists] = useState<List[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
 
   // ── Fetch directory contents ──
   const fetchDirectoryContents = useCallback(async () => {
     const folderId = currentFolder ? currentFolder.id : null;
     setLoading(true);
     setError(null);
+    setIsOffline(false);
 
     try {
       // Fetch Folders
@@ -60,8 +63,30 @@ export function useDirectory(userId: string) {
 
       if (allLists && myMemberships) {
         const myIds = myMemberships.map((m) => m.list_id);
-        setMyLists(allLists.filter((l) => myIds.includes(l.id)));
-        setOtherLists(allLists.filter((l) => !myIds.includes(l.id)));
+        const myLists = allLists.filter((l) => myIds.includes(l.id));
+        setLists(myLists);
+      }
+
+      // Cache the data for offline use
+      if (fData && allLists && myMemberships) {
+        const myIds = myMemberships.map((m) => m.list_id);
+        const myLists = allLists.filter((l) => myIds.includes(l.id));
+        await saveCachedDirectory(folderId, fData, myLists);
+      }
+    } catch (e: any) {
+      // Network error — try loading from cache
+      if (e?.message?.includes('Network') || e?.message?.includes('Failed to fetch')) {
+        setIsOffline(true);
+        const cached = await loadCachedDirectory(folderId);
+        if (cached) {
+          setFolders(cached.folders);
+          setLists(cached.lists);
+          setError(null);
+        } else {
+          setError('No internet connection and no cached data available.');
+        }
+      } else {
+        setError(`Unexpected error: ${e?.message || 'Unknown'}`);
       }
     } finally {
       setLoading(false);
@@ -131,23 +156,31 @@ export function useDirectory(userId: string) {
       return null;
     }
 
+    // Auto-add partner if configured
+    if (PARTNER_EMAIL) {
+      try {
+        const { data: partnerData, error: partnerErr } = await supabase.rpc('get_user_id_by_email', {
+          email_param: PARTNER_EMAIL,
+        });
+
+        if (!partnerErr && partnerData) {
+          const { error: partnerJoinErr } = await supabase
+            .from('list_members')
+            .insert([{ list_id: listData.id, user_id: partnerData }]);
+
+          if (partnerJoinErr) {
+            console.warn(`Warning: Could not auto-add partner to list: ${partnerJoinErr.message}`);
+          }
+        } else if (partnerErr) {
+          console.warn(`Warning: Could not find partner user: ${partnerErr.message}`);
+        }
+      } catch (e) {
+        console.warn('Warning: Auto-share with partner failed:', e);
+      }
+    }
+
     await fetchDirectoryContents();
     return listData;
-  }
-
-  // ── Join a list ──
-  async function joinList(listId: string): Promise<boolean> {
-    setError(null);
-    const { error: err } = await supabase
-      .from('list_members')
-      .insert([{ list_id: listId, user_id: userId }]);
-    if (err) {
-      setError(`Failed to join list: ${err.message}`);
-      Alert.alert('Error joining', err.message);
-      return false;
-    }
-    await fetchDirectoryContents();
-    return true;
   }
 
   // ── Delete a list ──
@@ -209,8 +242,7 @@ export function useDirectory(userId: string) {
       return;
     }
     // Optimistic local update
-    setMyLists((prev) => prev.map((l) => (l.id === listId ? { ...l, comment } : l)));
-    setOtherLists((prev) => prev.map((l) => (l.id === listId ? { ...l, comment } : l)));
+    setLists((prev) => prev.map((l) => (l.id === listId ? { ...l, comment } : l)));
   }
 
   // ── Navigation ──
@@ -233,13 +265,12 @@ export function useDirectory(userId: string) {
     folderPath,
     currentFolder,
     folders,
-    myLists,
-    otherLists,
+    lists,
     loading,
     error,
+    isOffline,
     createFolder,
     createList,
-    joinList,
     deleteList,
     updateListName,
     setFolderComment,

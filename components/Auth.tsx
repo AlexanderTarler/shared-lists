@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, View, TextInput, Button, Text } from 'react-native';
+import { Alert, StyleSheet, View, TextInput, Button, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 export default function Auth() {
@@ -10,7 +10,7 @@ export default function Auth() {
   async function signInWithEmail() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(), // <-- Add .trim() here
+      email: email.trim(),
       password: password,
     });
 
@@ -24,7 +24,7 @@ export default function Auth() {
       data: { session },
       error,
     } = await supabase.auth.signUp({
-      email: email.trim(), // <-- Add .trim() here
+      email: email.trim(),
       password: password,
     });
 
@@ -36,6 +36,7 @@ export default function Auth() {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Welcome!</Text>
+      <Text style={styles.subtitle}>to Shared List</Text>
       <View style={[styles.verticallySpaced, styles.mt20]}>
         <TextInput
           style={styles.input}
@@ -43,6 +44,7 @@ export default function Auth() {
           value={email}
           placeholder="email@address.com"
           autoCapitalize={'none'}
+          placeholderTextColor="#A39B87"
         />
       </View>
       <View style={styles.verticallySpaced}>
@@ -53,13 +55,34 @@ export default function Auth() {
           secureTextEntry={true}
           placeholder="Password"
           autoCapitalize={'none'}
+          placeholderTextColor="#A39B87"
         />
       </View>
       <View style={[styles.verticallySpaced, styles.mt20]}>
-        <Button title="Sign in" disabled={loading} onPress={() => signInWithEmail()} />
+        <TouchableOpacity 
+          style={[styles.button, styles.primaryButton]} 
+          disabled={loading}
+          onPress={() => signInWithEmail()}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.buttonText}>Sign In</Text>
+          )}
+        </TouchableOpacity>
       </View>
       <View style={styles.verticallySpaced}>
-        <Button title="Sign up" disabled={loading} onPress={() => signUpWithEmail()} />
+        <TouchableOpacity 
+          style={[styles.button, styles.secondaryButton]} 
+          disabled={loading}
+          onPress={() => signUpWithEmail()}
+        >
+          {loading ? (
+            <ActivityIndicator color="#8B7355" />
+          ) : (
+            <Text style={styles.secondaryButtonText}>Sign Up</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -71,10 +94,18 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   header: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 6,
+    color: '#5C4033',
+    fontFamily: 'Georgia',
+  },
+  subtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#A39B87',
   },
   verticallySpaced: {
     paddingTop: 4,
@@ -85,10 +116,36 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   input: {
-    backgroundColor: 'white',
-    borderColor: 'gray',
-    borderWidth: 1,
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: '#FFF8F0',
+    borderColor: '#E8DCC8',
+    borderWidth: 2,
+    padding: 14,
+    borderRadius: 10,
+    color: '#5C4033',
+    fontSize: 16,
+  },
+  button: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  primaryButton: {
+    backgroundColor: '#D4A574',
+    borderColor: '#B8905A',
+  },
+  secondaryButton: {
+    backgroundColor: '#FFF8F0',
+    borderColor: '#E8DCC8',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButtonText: {
+    color: '#8B7355',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
